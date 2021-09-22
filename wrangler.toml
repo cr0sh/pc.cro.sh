@@ -1,0 +1,24 @@
+name = "pc"
+type = "javascript"
+workers_dev = true
+compatibility_date = "2021-08-27" # required
+compatibility_flags = [ "formdata_parser_supports_files" ] # required
+
+kv_namespaces = [
+    { binding = "pc", id = "f49c226521ae4f1391db4288401c0f79", preview_id = "f2fdd11596de42e99cc94b1ed0c3ebfc" }
+]
+
+[vars]
+WORKERS_RS_VERSION = "0.0.6"
+
+[build]
+command = "cargo install -q worker-build && worker-build --release workers" # required
+
+[build.upload]
+dir    = "workers/build/worker"
+format = "modules"
+main   = "./shim.mjs"
+
+[[build.upload.rules]]
+globs = ["**/*.wasm"]
+type  = "CompiledWasm"

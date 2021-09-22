@@ -1,0 +1,4 @@
+/.vscode
+RECAPTCHA_SECRET
+ID_HASH_SALT
+/target

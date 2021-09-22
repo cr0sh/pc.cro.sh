@@ -1,0 +1,26 @@
+.App {
+  text-align: center;
+  margin: 4em;
+}
+
+.beta-sup {
+  vertical-align: top;
+  position: relative;
+  display: inline;
+  font-size: medium;
+  text-transform: uppercase;
+}
+
+.app-title {
+  padding-bottom: 3em;
+}
+
+.id-pw-input {
+  padding: 0.7em;
+  border: black 1px solid;
+  border-radius: 0.3em;
+}
+
+.tooltip-text {
+  font-size: larger;
+}
