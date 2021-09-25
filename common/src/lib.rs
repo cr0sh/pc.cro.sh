@@ -56,18 +56,24 @@ impl StoreFormat {
         passphrase: String,
         recaptcha_token: String,
     ) -> anyhow::Result<()> {
+        use reqwest::StatusCode;
+
         match self {
             Self::V1(x) => {
                 let x = x.encode_to_kv(passphrase.as_bytes())?;
                 let client = reqwest::Client::new();
-                client
+                let resp = client
                     .put(format!("{}/{}", CF_WORKER_BACKEND, &key))
                     .header("X-RECAPTCHA-TOKEN", recaptcha_token)
                     .body(x)
                     .send()
                     .await?;
 
-                Ok(())
+                match resp.status() {
+                    StatusCode::PAYLOAD_TOO_LARGE => Err(anyhow!("파일이 너무 큽니다")),
+                    StatusCode::EXPECTATION_FAILED => Err(anyhow!("reCAPTCHA 인증에 실패했습니다")),
+                    _ => Ok(()),
+                }
             }
         }
     }
