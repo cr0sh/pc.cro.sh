@@ -1,12 +1,7 @@
-use std::{
-    collections::{hash_map::RandomState, HashMap},
-    convert::TryInto,
-    iter::FromIterator,
-};
+use std::convert::TryInto;
 
 use serde_json::json;
 use sha2::Digest;
-use wasm_bindgen::JsValue;
 use worker::*;
 
 mod utils;
@@ -84,7 +79,7 @@ async fn v1_put(mut req: Request, ctx: RouteContext<()>) -> worker::Result<Respo
             .ok_or_else(|| Error::RustError("No reCAPTCHA token".to_owned()))?;
 
         if !validate_recaptcha(token).await? {
-            return Ok(Response::ok("recaptcha_fail")?.cors(&req)?.with_status(403));
+            return Ok(Response::ok("recaptcha_fail")?.cors(&req)?.with_status(417));
         }
 
         let body = req.bytes().await?;
