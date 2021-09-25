@@ -149,7 +149,7 @@ const DownloadForm: React.FC<IGoogleReCaptchaConsumerProps & WasmProps> = ({ exe
   )
 }
 
-type WasmType = typeof import("./pkg") | undefined;
+type WasmType = typeof import("./pkg");
 const Forms: React.FC = () => {
   const [wasm, setWasm] = React.useState<WasmType | undefined>(undefined);
   React.useEffect(() => {
@@ -160,6 +160,10 @@ const Forms: React.FC = () => {
     fetchWasm();
   }, []);
   const { executeRecaptcha } = useGoogleReCaptcha();
+
+  if (wasm === undefined) {
+    return (<></>);
+  }
 
   return (
     <Container maxWidth="lg" style={{ "padding": "3em" }}>
