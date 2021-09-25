@@ -1,4 +1,4 @@
-import { Button, Container, Grid, TextField, ThemeProvider, Typography, Stack, Tooltip, createTheme, styled } from '@mui/material';
+import { Button, Container, Grid, TextField, ThemeProvider, Typography, Stack, Tooltip, createTheme, styled, Box, Snackbar, Alert, Slide } from '@mui/material';
 import React from 'react';
 import './App.css';
 import { deepOrange, lightBlue, orange, red, yellow } from '@mui/material/colors';
@@ -71,6 +71,7 @@ const UploadForm: React.FC<IGoogleReCaptchaConsumerProps & WasmProps> = ({ execu
   const nameRef = React.useRef<HTMLInputElement>(null);
   const passwordRef = React.useRef<HTMLInputElement>(null);
   const passwordCheckRef = React.useRef<HTMLInputElement>(null);
+  const [alertComponent, setAlertComponent] = React.useState<React.ReactElement | undefined>(undefined);
 
   const onClick = React.useCallback(async () => {
     if (executeRecaptcha === undefined) {
@@ -106,7 +107,18 @@ const UploadForm: React.FC<IGoogleReCaptchaConsumerProps & WasmProps> = ({ execu
 
     const token = await executeRecaptcha();
     const buffer = await files[0].arrayBuffer();
-    wasm!!.store_put(new Uint8Array(buffer), nameRef.current!!.value, passwordRef.current!!.value, token);
+    try {
+      await wasm.store_put(new Uint8Array(buffer), nameRef.current!!.value, passwordRef.current!!.value, token);
+      const successAlert = (<Alert onClose={() => setAlertComponent(undefined)} severity="success" sx={{ width: "100%" }}>
+        업로드에 성공하였습니다
+      </Alert>);
+      setAlertComponent(successAlert);
+    } catch (e: any) {
+      const errorAlert = (<Alert onClose={() => setAlertComponent(undefined)} severity="error" sx={{ width: "100%" }}>
+        {String(e)}
+      </Alert>);
+      setAlertComponent(errorAlert);
+    }
   }, [executeRecaptcha, files, wasm]);
 
   const onFileChange = React.useCallback((ev: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,13 +136,21 @@ const UploadForm: React.FC<IGoogleReCaptchaConsumerProps & WasmProps> = ({ execu
       <TextField label="이름" variant="filled" error={!!validation.name} helperText={validation.name} inputRef={nameRef}></TextField>
       <TextField label="비밀번호" variant="outlined" type="password" error={!!validation.password} helperText={validation.password} inputRef={passwordRef}></TextField>
       <TextField label="비밀번호(확인)" variant="outlined" type="password" error={!!validation.password} helperText={validation.password} inputRef={passwordCheckRef}></TextField>
-      <Grid container justifyContent="space-between">
+      <Grid container justifyContent="space-between" width="md">
         <label htmlFor="file-selector-button">
           <Input accept="text/*" type="file" id="file-selector-button" onChange={onFileChange} />
           <Button variant="contained" color="primary" component="span">.reg 파일 선택</Button>
         </label>
+        <Box gridRow={1} width="xs" component="span" style={{ "marginLeft": "1em" }} />
         <WrappedButton variant="contained" color="primary" disabled={!executeRecaptcha || !wasm} files={files} onClick={onClick}>설정 업로드</WrappedButton>
       </Grid>
+      {
+        alertComponent ? (
+          <Snackbar open onClose={() => setAlertComponent(undefined)} TransitionComponent={Slide}>
+            {alertComponent}
+          </Snackbar>
+        ) : (<></>)
+      }
     </Stack>
   );
 }
@@ -166,7 +186,7 @@ const Forms: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="lg" style={{ "padding": "3em" }}>
+    <Container maxWidth="xl" style={{ "padding": "3em" }}>
       <Stack className="forms-container" direction="row" spacing={3} justifyContent="center">
         <UploadForm executeRecaptcha={executeRecaptcha} wasm={wasm} />
         <DownloadForm executeRecaptcha={executeRecaptcha} wasm={wasm} />
