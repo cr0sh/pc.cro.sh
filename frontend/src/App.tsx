@@ -21,13 +21,13 @@ const theme = createTheme({
       main: orange[200],
     },
     error: {
-      main: red[300],
+      main: red[700],
     },
     warning: {
-      main: yellow[200],
+      main: yellow[400],
     },
     info: {
-      main: lightBlue[300],
+      main: lightBlue[400],
     }
   },
 });
