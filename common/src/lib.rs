@@ -6,6 +6,7 @@ use enum_kind::Kind;
 use envs::*;
 use hex_literal::hex;
 use miniz_oxide::{deflate::compress_to_vec, inflate::decompress_to_vec_with_limit};
+use regex::Regex;
 use sha2::Digest;
 
 mod envs;
@@ -27,7 +28,7 @@ pub mod bindings {
         passphrase: String,
         recaptcha_token: String,
     ) -> Result<(), JsValue> {
-        let payload = into_utf8(payload).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        let payload = into_utf8(&payload).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
         let payload = String::from_utf8(payload).unwrap();
         let payload = optimizer_v1(&payload)
             .ok_or_else(|| JsValue::from_str("올바른 메이플스토리 설정 파일이 아닙니다."))?;
@@ -37,6 +38,24 @@ pub mod bindings {
         x.upload(key, passphrase, recaptcha_token)
             .await
             .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
+    }
+
+    #[wasm_bindgen]
+    pub async fn store_get(
+        key: String,
+        passphrase: String,
+        recaptcha_token: String,
+        mmap_io: bool,
+        memory_alloc_gigabytes: usize,
+    ) -> Result<(), JsValue> {
+        let mut s = StoreFormat::download(key, passphrase, recaptcha_token)
+            .await
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+
+        s.adjust_settings(mmap_io, memory_alloc_gigabytes)
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+
+        Ok(())
     }
 }
 
@@ -84,6 +103,96 @@ impl StoreFormat {
                 }
             }
         }
+    }
+
+    #[cfg(feature = "frontend")]
+    pub async fn download(
+        key: String,
+        passphrase: String,
+        recaptcha_token: String,
+    ) -> anyhow::Result<Self> {
+        use anyhow::Context;
+        use reqwest::StatusCode;
+
+        let client = reqwest::Client::new();
+        let resp = client
+            .get(format!("{}/{}", CF_WORKER_BACKEND, &key))
+            .header("X-RECAPTCHA-TOKEN", recaptcha_token)
+            .send()
+            .await?;
+
+        match resp.status() {
+            StatusCode::NOT_FOUND => return Err(anyhow!("해당 이름을 가진 설정 파일이 없습니다")),
+            StatusCode::EXPECTATION_FAILED => return Err(anyhow!("reCAPTCHA 인증에 실패했습니다")),
+            _ => (),
+        }
+
+        let headers = resp.headers();
+        let version = headers
+            .get("X-ENCODING-VERSION")
+            .map(|x| x.to_str())
+            .transpose()?
+            .map(str::parse)
+            .unwrap_or(Ok(1))?;
+
+        match version {
+            1 => {
+                let payload = resp.bytes().await?;
+                let payload = base64::decode(&payload)?;
+
+                Ok(Self::V1(
+                    StoreFormatV1::decode_from_kv(&payload, passphrase.as_bytes())
+                        .context("Cannot decode response payload")?,
+                ))
+            }
+            x => Err(anyhow!("Unsupported encoding version {}", x)),
+        }
+    }
+
+    pub fn adjust_settings(
+        &mut self,
+        mmap_io: bool,
+        memory_alloc_gigabytes: usize,
+    ) -> anyhow::Result<()> {
+        let payload = match self {
+            StoreFormat::V1(StoreFormatV1 { payload }) => payload,
+        };
+
+        let mmap_re = Regex::new(r#"\"MemoryMappedIO\"=dword:([0-9a-fA-F]{8})"#).unwrap();
+        let sixtyfourbit_re =
+            Regex::new(r#"\"64bitFlushMemorySize\"=dword:([0-9a-fA-F]{8})"#).unwrap();
+        let exec_path_re = Regex::new(r#"\"ExecPath\"=[^\n]+\r?\n"#).unwrap();
+        let mut decoded = String::from_utf8(into_utf8(&payload)?).unwrap();
+
+        let exec_path_range = exec_path_re
+            .find(&decoded)
+            .as_ref()
+            .map(regex::Match::range);
+
+        if let Some(r) = exec_path_range {
+            decoded.replace_range(r, "");
+        }
+
+        let mmap_range = mmap_re
+            .captures(&decoded)
+            .map(|x| x.get(1).unwrap().range());
+
+        if let Some(r) = mmap_range {
+            decoded.replace_range(r, &format!("{:08x}", if mmap_io { 1 } else { 0 }));
+        }
+
+        let sixtyfourbit_range = sixtyfourbit_re
+            .captures(&decoded)
+            .map(|x| x.get(1).unwrap().range());
+
+        if let Some(r) = sixtyfourbit_range {
+            decoded.replace_range(r, &format!("{:08x}", memory_alloc_gigabytes * 1024));
+        }
+
+        payload.truncate(decoded.as_bytes().len());
+        payload.copy_from_slice(decoded.as_bytes());
+
+        Ok(())
     }
 }
 
@@ -149,9 +258,9 @@ impl StoreFormatV1 {
     }
 }
 
-pub fn into_utf8(x: Vec<u8>) -> anyhow::Result<Vec<u8>> {
+pub fn into_utf8(x: &[u8]) -> anyhow::Result<Vec<u8>> {
     let mut detector = EncodingDetector::new();
-    detector.feed(&x, true);
+    detector.feed(x, true);
     let enc = detector.guess(None, true);
     let mut decoder = enc.new_decoder();
     let mut buffer = vec![
@@ -160,7 +269,7 @@ pub fn into_utf8(x: Vec<u8>) -> anyhow::Result<Vec<u8>> {
             .max_utf8_buffer_length_without_replacement(x.len())
             .ok_or_else(|| anyhow!("File size too big"))?
     ];
-    let (result, _, written) = decoder.decode_to_utf8_without_replacement(&x, &mut buffer, true);
+    let (result, _, written) = decoder.decode_to_utf8_without_replacement(x, &mut buffer, true);
     match result {
         encoding_rs::DecoderResult::InputEmpty => {
             buffer.truncate(written);

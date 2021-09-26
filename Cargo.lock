@@ -715,6 +715,7 @@ version = "0.1.0"
 dependencies = [
  "aes",
  "anyhow",
+ "base64",
  "block-modes",
  "chardetng",
  "encoding_rs",
