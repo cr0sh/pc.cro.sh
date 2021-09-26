@@ -8,7 +8,7 @@ fn main() {
     let passphrase = args().nth(3).unwrap();
 
     let payload = std::fs::read(input).unwrap();
-    let payload = into_utf8(payload).unwrap();
+    let payload = into_utf8(&payload).unwrap();
     println!("input: {}", String::from_utf8(payload.clone()).unwrap());
     println!("Input size: {} bytes", payload.len());
 
