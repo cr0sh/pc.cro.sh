@@ -84,7 +84,7 @@ async fn v1_put(mut req: Request, ctx: RouteContext<()>) -> worker::Result<Respo
 
         let body = req.bytes().await?;
         let body = base64::encode(body);
-        if body.as_bytes().len() > (400 << 10) {
+        if body.as_bytes().len() > (20 << 10) {
             return Ok(
                 Response::ok(format!("file_size_too_big, got: {}", body.as_bytes().len()))?
                     .cors(&req)?
