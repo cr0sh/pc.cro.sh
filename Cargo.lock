@@ -742,6 +742,7 @@ dependencies = [
  "wasm-bindgen",
  "wee_alloc",
  "worker",
+ "worker-kv",
 ]
 
 [[package]]
