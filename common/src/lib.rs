@@ -9,12 +9,14 @@ use miniz_oxide::{deflate::compress_to_vec, inflate::decompress_to_vec_with_limi
 use sha2::Digest;
 
 mod envs;
-
+mod optimizer;
 type Aes256Cbc = Cbc<Aes256, Pkcs7>;
 const IV: [u8; 16] = include!("../iv.txt");
 
 #[cfg(feature = "frontend")]
 pub mod bindings {
+    use crate::optimizer::optimizer_v1;
+
     use super::*;
     use wasm_bindgen::prelude::*;
 
@@ -25,7 +27,13 @@ pub mod bindings {
         passphrase: String,
         recaptcha_token: String,
     ) -> Result<(), JsValue> {
-        let x = StoreFormat::V1(StoreFormatV1 { payload });
+        let payload = into_utf8(payload).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        let payload = String::from_utf8(payload).unwrap();
+        let payload = optimizer_v1(&payload)
+            .ok_or_else(|| JsValue::from_str("올바른 메이플스토리 설정 파일이 아닙니다."))?;
+        let x = StoreFormat::V1(StoreFormatV1 {
+            payload: payload.as_bytes().to_vec(),
+        });
         x.upload(key, passphrase, recaptcha_token)
             .await
             .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
