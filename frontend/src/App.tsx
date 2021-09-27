@@ -278,6 +278,20 @@ const Disclaimer: React.FC = () => (
   </Container>
 );
 
+const Help: React.FC = () => (
+  <Container maxWidth="md">
+    <Typography variant="h6" align="left">
+      .reg 파일 생성하는 법 (업로드)
+    </Typography>
+    <Typography variant="body1" align="left">1. Windows 10의 경우: [Win]+[i]를 누른 후 'Windows Powershell'을 클릭합니다.</Typography>
+    <Typography variant="body1" align="left">2. Windows 10 미만 버전의 경우: 시작에서 'Windows Powershell'을 검색해 실행합니다.</Typography>
+    <Typography variant="body1" align="left">3. 다음 명령어를 입력합니다.</Typography>
+    <Typography variant="body2" noWrap align="left">
+      <pre style={{ "overflow": "auto", "padding": "1em", "background": "whiteSmoke", "border": "1px solid gray", "borderRadius": "0.4em" }}>reg export HKLM\SOFTWARE\WOW6432Node\Wizet\MapleStory $Env:USERPROFILE\Desktop\maplestory.reg /y</pre>
+    </Typography>
+    <Typography variant="body1" align="left">4. 바탕화면에서 <pre style={{ "display": "inline", "padding": "0.5em" }}>maplestory.reg</pre> 파일을 찾아 업로드합니다.</Typography>
+  </Container>
+);
 
 const Main: React.FC = () => {
   return (
@@ -285,6 +299,7 @@ const Main: React.FC = () => {
       <ThemeProvider theme={theme}>
         <Title />
         <Forms />
+        <Help />
         <Disclaimer />
       </ThemeProvider>
     </GoogleReCaptchaProvider>
