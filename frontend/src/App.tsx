@@ -205,8 +205,8 @@ const DownloadForm: React.FC<IGoogleReCaptchaConsumerProps & WasmProps> = ({ exe
       <TextField label="비밀번호" variant="outlined" type="password" inputRef={passwordRef}></TextField>
       <FormControl component="fieldset">
         <FormLabel component="legend">메모리 맵 입출력</FormLabel>
-        <RadioGroup row defaultValue="no">
-          <FormControlLabel label="사용" value="yes" control={<Radio onChange={(ev) => setMmap(ev.target.checked)} />} />
+        <RadioGroup row defaultValue="no" onChange={ev => setMmap(ev.target.value === "yes")}>
+          <FormControlLabel label="사용" value="yes" control={<Radio />} />
           <FormControlLabel label="미사용" value="no" control={<Radio />} />
         </RadioGroup>
       </FormControl>
