@@ -26,7 +26,9 @@ encoding_rs = "0.8.28"
 miniz_oxide = "0.4.4"
 regex = "1.5.4"
 base64 = "0.13.0"
+js-sys = { version = "0.3.55", optional = true }
+console_error_panic_hook = { version = "0.1.6", optional = true }
 
 [features]
 default = ["frontend"]
-frontend = ["wasm-bindgen", "wasm-bindgen-futures", "reqwest"]
+frontend = ["wasm-bindgen", "wasm-bindgen-futures", "reqwest", "js-sys", "console_error_panic_hook"]
