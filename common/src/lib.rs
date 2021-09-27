@@ -158,10 +158,10 @@ impl StoreFormat {
             StoreFormat::V1(StoreFormatV1 { payload }) => payload,
         };
 
-        let mmap_re = Regex::new(r#"\"MemoryMappedIO\"=dword:([0-9a-fA-F]{8})"#).unwrap();
+        let mmap_re = Regex::new(r#""MemoryMappedIO"=dword:([0-9a-fA-F]{8})"#).unwrap();
         let sixtyfourbit_re =
-            Regex::new(r#"\"64bitFlushMemorySize\"=dword:([0-9a-fA-F]{8})"#).unwrap();
-        let exec_path_re = Regex::new(r#"\"ExecPath\"=[^\n]+\r?\n"#).unwrap();
+            Regex::new(r#""64bitFlushMemorySize"=dword:([0-9a-fA-F]{8})"#).unwrap();
+        let exec_path_re = Regex::new(r#""ExecPath"=[^\n]+\r?\n"#).unwrap();
         let mut decoded = String::from_utf8(into_utf8(&payload)?).unwrap();
 
         let exec_path_range = exec_path_re
