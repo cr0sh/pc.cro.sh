@@ -1,4 +1,4 @@
-import { Button, Container, Grid, TextField, ThemeProvider, Typography, Stack, Tooltip, createTheme, styled, Box, Snackbar, Alert, Slide } from '@mui/material';
+import { Button, Container, Grid, TextField, ThemeProvider, Typography, Stack, Tooltip, createTheme, styled, Box, Snackbar, Alert, Slide, RadioGroup, Radio, InputAdornment, FormControlLabel, FormControl, FormLabel } from '@mui/material';
 import React from 'react';
 import './App.css';
 import { deepOrange, lightBlue, orange, red, yellow } from '@mui/material/colors';
@@ -156,15 +156,76 @@ const UploadForm: React.FC<IGoogleReCaptchaConsumerProps & WasmProps> = ({ execu
 }
 
 const DownloadForm: React.FC<IGoogleReCaptchaConsumerProps & WasmProps> = ({ executeRecaptcha, wasm }) => {
+  const nameRef = React.useRef<HTMLInputElement>(null);
+  const passwordRef = React.useRef<HTMLInputElement>(null);
+  const [mmap, setMmap] = React.useState<boolean>(false);
+  const memoryInGigabytesRef = React.useRef<HTMLInputElement>(null);
+  const [alertComponent, setAlertComponent] = React.useState<React.ReactElement | undefined>(undefined);
+  const onClick = React.useCallback(async () => {
+    if (executeRecaptcha === undefined) {
+      return;
+    }
+
+    const token = await executeRecaptcha();
+
+    try {
+      let mem = Number.parseInt(memoryInGigabytesRef.current?.value ?? "4", 10);
+      const payload =
+        await wasm.store_get(
+          nameRef.current!!.value,
+          passwordRef.current!!.value,
+          token,
+          mmap,
+          mem,
+        );
+
+      const normalizedName = nameRef.current!!.value.replaceAll(/[^a-zA-Z0-9\-_]/g, "");
+      const element = document.createElement("a");
+      const file = new Blob([payload], { type: "text/plain" });
+      element.href = URL.createObjectURL(file);
+      element.download = `maplestory_settings_${normalizedName}_${Math.floor(Date.now() / 1000)}.reg`;
+      element.hidden = true;
+      document.body.appendChild(element);
+      try {
+        element.click();
+      } finally {
+        document.body.removeChild(element);
+      }
+    } catch (e: any) {
+      const errorAlert = (<Alert onClose={() => setAlertComponent(undefined)} severity="error" sx={{ width: "100%" }}>
+        {String(e)}
+      </Alert>);
+      setAlertComponent(errorAlert);
+    }
+  }, [executeRecaptcha, wasm, mmap]);
 
   return (
     <Stack className="id-pw-input" spacing={2} width="sm">
       <Typography variant="h5">설정 다운로드</Typography>
-      <TextField label="이름" variant="filled"></TextField>
-      <TextField label="비밀번호" variant="outlined" type="password"></TextField>
+      <TextField label="이름" variant="filled" inputRef={nameRef}></TextField>
+      <TextField label="비밀번호" variant="outlined" type="password" inputRef={passwordRef}></TextField>
+      <FormControl component="fieldset">
+        <FormLabel component="legend">메모리 맵 입출력</FormLabel>
+        <RadioGroup row defaultValue="no">
+          <FormControlLabel label="사용" value="yes" control={<Radio onChange={(ev) => setMmap(ev.target.checked)} />} />
+          <FormControlLabel label="미사용" value="no" control={<Radio />} />
+        </RadioGroup>
+      </FormControl>
+      <TextField label="최대 메모리 사용량" variant="outlined" type="number"
+        InputProps={{ endAdornment: (<InputAdornment position="end">GB</InputAdornment>) }}
+        inputRef={memoryInGigabytesRef}
+        defaultValue={(navigator as unknown as { deviceMemory: number | undefined }).deviceMemory ?? 4}
+        disabled={mmap}></TextField>
       <Grid container justifyContent="flex-end">
-        <Button variant="contained" color="primary" disabled={!executeRecaptcha || !wasm}>설정 다운로드</Button>
+        <Button variant="contained" color="primary" disabled={!executeRecaptcha || !wasm} onClick={onClick}>설정 다운로드</Button>
       </Grid>
+      {
+        alertComponent ? (
+          <Snackbar open onClose={() => setAlertComponent(undefined)} TransitionComponent={Slide}>
+            {alertComponent}
+          </Snackbar>
+        ) : (<></>)
+      }
     </Stack>
   )
 }
@@ -175,6 +236,7 @@ const Forms: React.FC = () => {
   React.useEffect(() => {
     const fetchWasm = async () => {
       const wasm = await import("./pkg");
+      wasm.init();
       setWasm(wasm);
     };
     fetchWasm();
