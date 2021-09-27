@@ -137,7 +137,7 @@ const UploadForm: React.FC<IGoogleReCaptchaConsumerProps & WasmProps> = ({ execu
       <TextField label="비밀번호(확인)" variant="outlined" type="password" error={!!validation.password} helperText={validation.password} inputRef={passwordCheckRef}></TextField>
       <Grid container justifyContent="space-between" width="md">
         <label htmlFor="file-selector-button">
-          <Input accept="text/*" type="file" id="file-selector-button" onChange={onFileChange} />
+          <Input accept="*/*" type="file" id="file-selector-button" onChange={onFileChange} />
           <Button variant="contained" color="primary" component="span">.reg 파일 선택</Button>
         </label>
         <Box gridRow={1} width="xs" component="span" style={{ "marginLeft": "1em" }} />
