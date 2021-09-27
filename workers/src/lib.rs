@@ -11,27 +11,6 @@ const ONE_YEAR_IN_SECONDS: u64 = 60 * 60 * 24 * 365;
 const ID_HASH_SALT: &str = include_str!("../../ID_HASH_SALT");
 const RECAPTCHA_SECRET: &str = include_str!("../../RECAPTCHA_SECRET");
 
-struct ArrayBuffer {
-    x: Vec<u8>,
-}
-
-impl ArrayBuffer {
-    fn new(x: Vec<u8>) -> Self {
-        Self { x }
-    }
-}
-
-impl ToRawKvValue for ArrayBuffer {
-    fn raw_kv_value(&self) -> std::result::Result<wasm_bindgen::JsValue, worker_kv::KvError> {
-        let buf = worker::js_sys::ArrayBuffer::new(self.x.len().try_into().unwrap());
-        let view = worker::js_sys::DataView::new(&buf, 0, self.x.len());
-        for (i, x) in self.x.iter().copied().enumerate() {
-            view.set_uint8(i, x);
-        }
-        Ok(wasm_bindgen::JsValue::from(buf))
-    }
-}
-
 trait Cors {
     fn cors(self, req: &Request) -> Result<Response>;
 }
@@ -105,15 +84,14 @@ async fn v1_put(mut req: Request, ctx: RouteContext<()>) -> worker::Result<Respo
         }
 
         let body = req.bytes().await?;
-        if body.len() > (20 << 10) {
+        let body = base64::encode(body);
+        if body.as_bytes().len() > (20 << 10) {
             return Ok(
-                Response::ok(format!("file_size_too_big, got: {}", body.len()))?
+                Response::ok(format!("file_size_too_big, got: {}", body.as_bytes().len()))?
                     .cors(&req)?
                     .with_status(413),
             );
         }
-
-        let body = ArrayBuffer::new(body);
 
         let kv = ctx.kv("pc")?;
         let hashed_key = sha256_salted_hash(key.as_bytes());
@@ -129,7 +107,7 @@ async fn v1_put(mut req: Request, ctx: RouteContext<()>) -> worker::Result<Respo
     }
 }
 
-async fn v1_get(mut req: Request, ctx: RouteContext<()>) -> worker::Result<Response> {
+async fn v1_get(req: Request, ctx: RouteContext<()>) -> worker::Result<Response> {
     if let Some(key) = ctx.param("key") {
         let token = req
             .headers()
@@ -137,14 +115,35 @@ async fn v1_get(mut req: Request, ctx: RouteContext<()>) -> worker::Result<Respo
             .ok_or_else(|| Error::RustError("No reCAPTCHA token".to_owned()))?;
 
         if !validate_recaptcha(token).await? {
-            return Ok(Response::ok("recaptcha_fail")?.cors(&req)?.with_status(403));
+            return Ok(Response::ok("recaptcha_fail")?.cors(&req)?.with_status(417));
         }
 
         let kv = ctx.kv("pc")?;
         let hashed_key = sha256_salted_hash(key.as_bytes());
-        let value = kv.get(&hashed_key).await?;
 
-        Response::ok("")?.cors(&req)
+        let options = js_sys::Object::new();
+        js_sys::Reflect::set(&options, &"type".into(), &"text".into())?;
+
+        let value = kv.get_with_metadata(&hashed_key).await?;
+
+        let (value, meta): (_, serde_json::Value) = if let Some(v) = value {
+            v
+        } else {
+            return Response::error("No such id", 404)?.cors(&req);
+        };
+
+        let ver = meta
+            .get("version")
+            .expect("No such field `version`")
+            .as_str()
+            .expect("Field `version` is not a str");
+
+        let mut headers = Headers::new();
+        headers.set("X-ENCODING-VERSION", ver)?;
+
+        Response::ok(value.as_string())?
+            .with_headers(headers)
+            .cors(&req)
     } else {
         Response::error("Bad Request", 400)?.cors(&req)
     }
@@ -181,6 +180,7 @@ pub async fn main_inner(req: Request, env: Env) -> Result<Response> {
     // Enviornment bindings like KV Stores, Durable Objects, Secrets, and Variables.
     router
         .put_async("/api/:key", v1_put)
+        .get_async("/api/:key", v1_get)
         .options_async("/api/:key", v1_preflight)
         .run(req, env)
         .await
