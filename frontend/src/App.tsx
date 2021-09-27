@@ -180,7 +180,7 @@ const DownloadForm: React.FC<IGoogleReCaptchaConsumerProps & WasmProps> = ({ exe
 
       const normalizedName = nameRef.current!!.value.replaceAll(/[^a-zA-Z0-9\-_]/g, "");
       const element = document.createElement("a");
-      const file = new Blob([payload], { type: "text/plain" });
+      const file = new Blob([payload], { type: "*/*" });
       element.href = URL.createObjectURL(file);
       element.download = `maplestory_settings_${normalizedName}_${Math.floor(Date.now() / 1000)}.reg`;
       element.hidden = true;
