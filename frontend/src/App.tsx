@@ -84,7 +84,6 @@ const UploadForm: React.FC<IGoogleReCaptchaConsumerProps & WasmProps> = ({ execu
     };
 
     try {
-      console.log(nameRef.current?.value);
       if ((nameRef.current?.value.length || 0) < 3) {
         v.name = "3글자 이상이어야 합니다.";
       }
