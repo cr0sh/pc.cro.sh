@@ -248,7 +248,7 @@ const Forms: React.FC = () => {
 
   return (
     <Container maxWidth="xl" style={{ "padding": "3em" }}>
-      <Stack className="forms-container" direction="row" spacing={3} justifyContent="center">
+      <Stack className="forms-container" direction="row" spacing={3} justifyContent="center" alignItems="start">
         <UploadForm executeRecaptcha={executeRecaptcha} wasm={wasm} />
         <DownloadForm executeRecaptcha={executeRecaptcha} wasm={wasm} />
       </Stack>
