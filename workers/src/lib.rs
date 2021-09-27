@@ -3,7 +3,6 @@ use std::convert::TryInto;
 use serde_json::json;
 use sha2::Digest;
 use worker::*;
-use worker_kv::ToRawKvValue;
 
 mod utils;
 
