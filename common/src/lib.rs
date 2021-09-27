@@ -52,7 +52,7 @@ pub mod bindings {
         recaptcha_token: String,
         mmap_io: bool,
         memory_alloc_gigabytes: usize,
-    ) -> Result<(), JsValue> {
+    ) -> Result<String, JsValue> {
         let mut s = StoreFormat::download(key, passphrase, recaptcha_token)
             .await
             .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
@@ -60,7 +60,10 @@ pub mod bindings {
         s.adjust_settings(mmap_io, memory_alloc_gigabytes)
             .map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
 
-        Ok(())
+        let payload = s.payload().to_vec();
+        let payload =
+            String::from_utf8(payload).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        Ok(payload)
     }
 }
 
@@ -199,6 +202,12 @@ impl StoreFormat {
 
         Ok(())
     }
+
+    pub fn payload(&self) -> &[u8] {
+        match self {
+            StoreFormat::V1(StoreFormatV1 { payload }) => &*payload,
+        }
+    }
 }
 
 pub struct StoreFormatV1 {
@@ -242,7 +251,9 @@ impl StoreFormatV1 {
         let passphrase = &*hasher.finalize();
 
         let cipher = Aes256Cbc::new_from_slices(passphrase, &IV)?;
-        let x = cipher.decrypt_vec(x)?;
+        let x = cipher
+            .decrypt_vec(x)
+            .map_err(|e| anyhow!("암호화된 파일 해석에 실패하였습니다: {:?}", e))?;
         let payload_hash = decompress_to_vec_with_limit(&x, 4 << 20)
             .map_err(|x| anyhow!("Decompression failed: {:?}", x))?;
         if payload_hash.len() < 32 {
