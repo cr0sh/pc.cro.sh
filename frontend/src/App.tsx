@@ -1,5 +1,5 @@
 import { Button, Container, Grid, TextField, ThemeProvider, Typography, Stack, Tooltip, createTheme, styled, Box, Snackbar, Alert, Slide, RadioGroup, Radio, InputAdornment, FormControlLabel, FormControl, FormLabel, CircularProgress } from '@mui/material';
-import React from 'react';
+import React, { useEffect } from 'react';
 import './App.css';
 import { deepOrange, lightBlue, orange, red, yellow } from '@mui/material/colors';
 import { GoogleReCaptchaProvider, IGoogleReCaptchaConsumerProps, useGoogleReCaptcha } from 'react-google-recaptcha-v3';
@@ -68,6 +68,7 @@ const UploadForm: React.FC<IGoogleReCaptchaConsumerProps & WasmProps> = ({ execu
 
   const [files, setFiles] = React.useState<File[]>([]);
   const [validation, setValidation] = React.useState<IFormValidation>({ name: undefined, password: undefined });
+  const [inProgress, setInProgress] = React.useState<boolean>(false);
   const nameRef = React.useRef<HTMLInputElement>(null);
   const passwordRef = React.useRef<HTMLInputElement>(null);
   const passwordCheckRef = React.useRef<HTMLInputElement>(null);
@@ -78,47 +79,63 @@ const UploadForm: React.FC<IGoogleReCaptchaConsumerProps & WasmProps> = ({ execu
       return;
     }
 
-    const v: IFormValidation = {
-      name: undefined,
-      password: undefined
-    };
-
-    try {
-      if ((nameRef.current?.value.length || 0) < 3) {
-        v.name = "3글자 이상이어야 합니다.";
-      }
-
-      if ((passwordRef.current?.value || "") !== (passwordCheckRef.current?.value || "")) {
-        v.password = "두 비밀번호가 다릅니다.";
-        return;
-      }
-
-      if ((passwordRef.current?.value.length || 0) < 6) {
-        v.password = "비밀번호는 6글자 이상이어야 합니다."
-      }
-    } finally {
-      setValidation(v);
+    if (!inProgress) {
+      setInProgress(true);
     }
+  }, [executeRecaptcha, inProgress]);
 
-    if (!!v.name || !!v.password) {
+  useEffect(() => {
+    if (!inProgress || executeRecaptcha === undefined) {
       return;
     }
 
-    const token = await executeRecaptcha();
-    const buffer = await files[0].arrayBuffer();
-    try {
-      await wasm.store_put(new Uint8Array(buffer), nameRef.current!!.value, passwordRef.current!!.value, token);
-      const successAlert = (<Alert onClose={() => setAlertComponent(undefined)} severity="success" sx={{ width: "100%" }}>
-        업로드에 성공하였습니다
-      </Alert>);
-      setAlertComponent(successAlert);
-    } catch (e: any) {
-      const errorAlert = (<Alert onClose={() => setAlertComponent(undefined)} severity="error" sx={{ width: "100%" }}>
-        {String(e)}
-      </Alert>);
-      setAlertComponent(errorAlert);
-    }
-  }, [executeRecaptcha, files, wasm]);
+    (async () => {
+      const v: IFormValidation = {
+        name: undefined,
+        password: undefined
+      };
+
+      try {
+        try {
+          if ((nameRef.current?.value.length || 0) < 3) {
+            v.name = "3글자 이상이어야 합니다.";
+          }
+
+          if ((passwordRef.current?.value || "") !== (passwordCheckRef.current?.value || "")) {
+            v.password = "두 비밀번호가 다릅니다.";
+            return;
+          }
+
+          if ((passwordRef.current?.value.length || 0) < 6) {
+            v.password = "비밀번호는 6글자 이상이어야 합니다."
+          }
+        } finally {
+          setValidation(v);
+        }
+
+        if (!!v.name || !!v.password) {
+          return;
+        }
+
+        const token = await executeRecaptcha();
+        const buffer = await files[0].arrayBuffer();
+        try {
+          await wasm.store_put(new Uint8Array(buffer), nameRef.current!!.value, passwordRef.current!!.value, token);
+          const successAlert = (<Alert onClose={() => setAlertComponent(undefined)} severity="success" sx={{ width: "100%" }}>
+            업로드에 성공하였습니다
+          </Alert>);
+          setAlertComponent(successAlert);
+        } catch (e: any) {
+          const errorAlert = (<Alert onClose={() => setAlertComponent(undefined)} severity="error" sx={{ width: "100%" }}>
+            {`업로드에 실패했습니다: ${String(e)}`}
+          </Alert>);
+          setAlertComponent(errorAlert);
+        }
+      } finally {
+        setInProgress(false);
+      }
+    })();
+  }, [executeRecaptcha, wasm, files, inProgress]);
 
   const onFileChange = React.useCallback((ev: React.ChangeEvent<HTMLInputElement>) => {
     const f = ev.target.files;
@@ -136,6 +153,11 @@ const UploadForm: React.FC<IGoogleReCaptchaConsumerProps & WasmProps> = ({ execu
       <TextField label="비밀번호" variant="outlined" type="password" error={!!validation.password} helperText={validation.password} inputRef={passwordRef}></TextField>
       <TextField label="비밀번호(확인)" variant="outlined" type="password" error={!!validation.password} helperText={validation.password} inputRef={passwordCheckRef}></TextField>
       <Grid container justifyContent="space-between" width="md">
+        {inProgress ? <>
+          <CircularProgress />
+          <Box component="span" style={{ "marginLeft": "0.8em" }} />
+        </>
+          : <></>}
         <label htmlFor="file-selector-button">
           <Input accept="*/*" type="file" id="file-selector-button" onChange={onFileChange} />
           <Button variant="contained" color="primary" component="span">.reg 파일 선택</Button>
