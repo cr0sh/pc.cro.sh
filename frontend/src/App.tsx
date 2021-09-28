@@ -1,4 +1,4 @@
-import { Button, Container, Grid, TextField, ThemeProvider, Typography, Stack, Tooltip, createTheme, styled, Box, Snackbar, Alert, Slide, RadioGroup, Radio, InputAdornment, FormControlLabel, FormControl, FormLabel } from '@mui/material';
+import { Button, Container, Grid, TextField, ThemeProvider, Typography, Stack, Tooltip, createTheme, styled, Box, Snackbar, Alert, Slide, RadioGroup, Radio, InputAdornment, FormControlLabel, FormControl, FormLabel, CircularProgress } from '@mui/material';
 import React from 'react';
 import './App.css';
 import { deepOrange, lightBlue, orange, red, yellow } from '@mui/material/colors';
@@ -158,6 +158,7 @@ const DownloadForm: React.FC<IGoogleReCaptchaConsumerProps & WasmProps> = ({ exe
   const nameRef = React.useRef<HTMLInputElement>(null);
   const passwordRef = React.useRef<HTMLInputElement>(null);
   const [mmap, setMmap] = React.useState<boolean>(false);
+  const [inProgress, setInprogress] = React.useState<boolean>(false);
   const memoryInGigabytesRef = React.useRef<HTMLInputElement>(null);
   const [alertComponent, setAlertComponent] = React.useState<React.ReactElement | undefined>(undefined);
   const onClick = React.useCallback(async () => {
@@ -165,38 +166,56 @@ const DownloadForm: React.FC<IGoogleReCaptchaConsumerProps & WasmProps> = ({ exe
       return;
     }
 
-    const token = await executeRecaptcha();
-
-    try {
-      let mem = Number.parseInt(memoryInGigabytesRef.current?.value ?? "4", 10);
-      const payload =
-        await wasm.store_get(
-          nameRef.current!!.value,
-          passwordRef.current!!.value,
-          token,
-          mmap,
-          mem,
-        );
-
-      const normalizedName = nameRef.current!!.value.replaceAll(/[^a-zA-Z0-9\-_]/g, "");
-      const element = document.createElement("a");
-      const file = new Blob([payload], { type: "*/*" });
-      element.href = URL.createObjectURL(file);
-      element.download = `maplestory_settings_${normalizedName}_${Math.floor(Date.now() / 1000)}.reg`;
-      element.hidden = true;
-      document.body.appendChild(element);
-      try {
-        element.click();
-      } finally {
-        document.body.removeChild(element);
-      }
-    } catch (e: any) {
-      const errorAlert = (<Alert onClose={() => setAlertComponent(undefined)} severity="error" sx={{ width: "100%" }}>
-        {String(e)}
-      </Alert>);
-      setAlertComponent(errorAlert);
+    if (!inProgress) {
+      setInprogress(true);
     }
-  }, [executeRecaptcha, wasm, mmap]);
+  }, [executeRecaptcha, inProgress]);
+
+  React.useEffect(() => {
+    if (!inProgress || executeRecaptcha === undefined) {
+      return;
+    }
+
+    (async () => {
+      const token = await executeRecaptcha();
+      try {
+        try {
+          let mem = Number.parseInt(memoryInGigabytesRef.current?.value ?? "4", 10);
+          const payload =
+            await wasm.store_get(
+              nameRef.current!!.value,
+              passwordRef.current!!.value,
+              token,
+              mmap,
+              mem,
+            );
+
+          const normalizedName = nameRef.current!!.value.replaceAll(/[^a-zA-Z0-9\-_]/g, "");
+          const element = document.createElement("a");
+          const file = new Blob([payload], { type: "*/*" });
+          element.href = URL.createObjectURL(file);
+          element.download = `maplestory_settings_${normalizedName}_${Math.floor(Date.now() / 1000)}.reg`;
+          element.hidden = true;
+          document.body.appendChild(element);
+          try {
+            element.click();
+          } finally {
+            document.body.removeChild(element);
+          }
+        } catch (e: any) {
+          const errorAlert = (<Alert onClose={() => setAlertComponent(undefined)} severity="error" sx={{ width: "100%" }}>
+            {`다운로드에 실패하였습니다: ${String(e)}`}
+          </Alert>);
+          setAlertComponent(errorAlert);
+          throw e;
+        }
+      } finally {
+        setInprogress(false);
+      }
+
+    })();
+  }
+    , [executeRecaptcha, wasm, mmap, inProgress]);
 
   return (
     <Stack className="id-pw-input" spacing={2} width="sm">
@@ -216,6 +235,8 @@ const DownloadForm: React.FC<IGoogleReCaptchaConsumerProps & WasmProps> = ({ exe
         defaultValue={(navigator as unknown as { deviceMemory: number | undefined }).deviceMemory ?? 4}
         disabled={mmap}></TextField>
       <Grid container justifyContent="flex-end">
+        {inProgress ? <CircularProgress /> : <></>}
+        <Box component="span" style={{ "marginLeft": "0.8em" }} />
         <Button variant="contained" color="primary" disabled={!executeRecaptcha || !wasm} onClick={onClick}>설정 다운로드</Button>
       </Grid>
       {
