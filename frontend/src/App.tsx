@@ -283,7 +283,7 @@ const Help: React.FC = () => (
     <Typography variant="h6" align="left">
       .reg 파일 생성하는 법 (업로드)
     </Typography>
-    <Typography variant="body1" align="left">1. Windows 10의 경우: [Win]+[i]를 누른 후 'Windows Powershell'을 클릭합니다.</Typography>
+    <Typography variant="body1" align="left">1. Windows 10의 경우: [Win]+[x]를 누른 후 'Windows Powershell'을 클릭합니다.</Typography>
     <Typography variant="body1" align="left">2. Windows 10 미만 버전의 경우: 시작에서 'Windows Powershell'을 검색해 실행합니다.</Typography>
     <Typography variant="body1" align="left">3. 다음 명령어를 입력합니다.</Typography>
     <Typography variant="body2" noWrap align="left">
