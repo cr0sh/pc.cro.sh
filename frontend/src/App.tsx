@@ -333,6 +333,14 @@ const Help: React.FC = () => (
       <pre style={{ "overflow": "auto", "padding": "1em", "background": "whiteSmoke", "border": "1px solid gray", "borderRadius": "0.4em" }}>reg export HKLM\SOFTWARE\WOW6432Node\Wizet\MapleStory $Env:USERPROFILE\Desktop\maplestory.reg /y</pre>
     </Typography>
     <Typography variant="body1" align="left">4. 바탕화면에서 <pre style={{ "display": "inline", "padding": "0.5em" }}>maplestory.reg</pre> 파일을 찾아 업로드합니다.</Typography>
+    <Typography variant="h6" align="left" style={{ "marginTop": "1em" }}>
+      .reg 파일 사용하는 법 (다운로드)
+    </Typography>
+    <Typography variant="body1" align="left">1. PC방에서 Chrome으로 이 페이지에 접속하여 이름과 비밀번호를 입력합니다.</Typography>
+    <Typography variant="body1" align="left">2. PC방 컴퓨터의 메모리 사양에 맞게 메모리 관련 옵션을 조정합니다.</Typography>
+    <Typography variant="body2" noWrap align="left">&nbsp;&nbsp;&nbsp;&nbsp; Tip: [Win]+[Pause] 키를 누르면 '시스템 정보'를 확인할 수 있습니다.</Typography>
+    <Typography variant="body1" align="left">3. 다운로드된 설정을 더블클릭하여 해당 레지스트리 파일을 추가합니다.</Typography>
+    <Typography variant="body1" align="left">4. <a href="https://maplestory.nexon.com">메이플스토리 하러 갑시다</a>.</Typography>
   </Container>
 );
 
