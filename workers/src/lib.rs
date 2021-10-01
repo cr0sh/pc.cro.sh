@@ -3,6 +3,7 @@ use std::convert::TryInto;
 use serde_json::json;
 use sha2::Digest;
 use worker::*;
+use worker_kv::KvError;
 
 mod utils;
 
@@ -123,7 +124,14 @@ async fn v1_get(req: Request, ctx: RouteContext<()>) -> worker::Result<Response>
         let options = js_sys::Object::new();
         js_sys::Reflect::set(&options, &"type".into(), &"text".into())?;
 
-        let value = kv.get_with_metadata(&hashed_key).await?;
+        let value = match kv.get_with_metadata(&hashed_key).await {
+            Ok(x) => x,
+            Err(e @ KvError::InvalidMetadata(_)) => {
+                console_log!("Warning: {:?}", e);
+                return Response::error("No such id", 404)?.cors(&req);
+            }
+            Err(e) => return Err(e.into()),
+        };
 
         let (value, meta): (_, serde_json::Value) = if let Some(v) = value {
             v
